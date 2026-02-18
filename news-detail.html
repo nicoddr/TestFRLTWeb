@@ -28,6 +28,12 @@
 
     <footer></footer> <!-- Injected via JS -->
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script src="firebase-config.js"></script>
     <script src="data.js"></script>
     <script src="script.js"></script>
     <script>
@@ -36,18 +42,34 @@
         const newsId = params.get('id');
         const container = document.getElementById('news-article');
 
-        if (!newsId) {
-            container.innerHTML = '<div class="alert alert-warning">Aucune actualité spécifiée. <a href="news.html">Retour</a></div>';
-        } else {
-            const allNews = getNews();
-            // Loose comparison because ID from URL is string, ID in data might be number
-            const item = allNews.find(n => n.id == newsId);
+        function renderDetail(newsList) {
+            if (!newsId) {
+                container.innerHTML = '<div class="alert alert-warning">Aucune actualité spécifiée. <a href="news.html">Retour</a></div>';
+                return;
+            }
+
+            // Loose comparison matching
+            const item = newsList.find(n => n.id == newsId);
 
             if (!item) {
+                // Only show not found if we are sure data is loaded and empty, 
+                // but since this is called on update, it's fine.
+                // However, if newsList is empty because still loading, we might show "not found" prematurely.
+                // script.js handles "loading" state separately ideally, but here we can check if empty.
+                if (newsList.length === 0 && !newsLoaded) {
+                    container.innerHTML = '<div id="loading" style="text-align: center; padding: 2rem;">Chargement...</div>';
+                    return;
+                }
+
                 container.innerHTML = '<div class="alert alert-warning">Actualité introuvable. Elle a peut-être été supprimée. <a href="news.html">Retour</a></div>';
             } else {
-                const region = getRegion(item.regionId);
-                const regionName = region ? region.name : 'France';
+                let regionName = 'France';
+                if (item.regionId === 'Institut Français') {
+                    regionName = 'Institut Français';
+                } else {
+                    const region = getRegion(item.regionId);
+                    if (region) regionName = region.name;
+                }
 
                 // Format Date
                 const dateObj = new Date(item.date);
@@ -63,11 +85,20 @@
                     <img src="${item.image}" alt="${item.title}" style="width: 100%; height: auto; border-radius: var(--radius); margin-bottom: 2rem; object-fit: cover; max-height: 500px;">
 
                     <div class="news-content" style="line-height: 1.8; font-size: 1.1rem; color: #334155;">
-                        ${item.content.replace(/\n/g, '<br>')}
-                    </div>
+                        ${item.content.replace(/\n/g, '<br>')} 
+                    </div> <!-- Added replace for newlines -->
                 `;
             }
         }
+
+        // Listen via onNewsUpdate
+        onNewsUpdate((news) => {
+            renderDetail(news);
+        });
+
+        // Also try immediate render if data already exists
+        renderDetail(getNews());
+
     </script>
 </body>
 

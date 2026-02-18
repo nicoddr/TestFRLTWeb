@@ -1,24 +1,43 @@
 // Load Data
+let currentNews = [];
+let newsLoaded = false;
+const newsListeners = [];
+
+function onNewsUpdate(callback) {
+    newsListeners.push(callback);
+    if (newsLoaded) callback(currentNews);
+}
+
+// Kept for backward compatibility with synchronous calls if any (returns empty or cached)
 function getNews() {
-    const stored = localStorage.getItem('ifl_news');
-    if (!stored) {
-        localStorage.setItem('ifl_news', JSON.stringify(INITIAL_NEWS));
-        return INITIAL_NEWS;
-    }
-    return JSON.parse(stored);
+    return currentNews;
 }
 
 function saveNews(newsItem) {
-    const news = getNews();
-    news.unshift(newsItem);
-    localStorage.setItem('ifl_news', JSON.stringify(news));
+    if (typeof firebase === 'undefined' || !firebase.apps.length) {
+        alert("Firebase non configuré. Impossible de sauvegarder.");
+        return;
+    }
+
+    // Create a new ref/key
+    const newRef = firebase.database().ref('news').push();
+    // Assign that key as the ID
+    newsItem.id = newRef.key;
+
+    newRef.set(newsItem).then(() => {
+        // Reload or just close modal? Listener should update UI
+        closeModal('post-modal');
+        // If on news page or home page, UI updates via listener
+    }).catch(error => {
+        console.error("Error saving news:", error);
+        alert("Erreur lors de la sauvegarde: " + error.message);
+    });
 }
 
 function getRegion(id) {
     return REGIONS.find(r => r.id === id);
 }
 
-// Auth State
 // Auth State
 const AUTH_KEY = 'ifl_auth_user'; // Changed key to store username
 const USERS = {
@@ -120,10 +139,14 @@ function renderFooter() {
 function deleteNews(id) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) return;
 
-    let news = getNews();
-    news = news.filter(item => item.id != id); // loose comparison for string/number id mismatch
-    localStorage.setItem('ifl_news', JSON.stringify(news));
-    window.location.reload();
+    if (typeof firebase !== 'undefined') {
+        firebase.database().ref('news/' + id).remove()
+            .then(() => {
+                console.log("Deleted");
+                // UI updates via listener
+            })
+            .catch(err => alert(err));
+    }
 }
 
 // Helper to render a news card
@@ -309,6 +332,49 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHeader();
     renderFooter();
 
+    // Firebase Initialization and Listener
+    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+        const database = firebase.database();
+        const newsRef = database.ref('news');
+
+        // Show loading state if grid exists
+        const grid = document.getElementById('recent-news-grid');
+        if (grid) grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Chargement des actualités...</p>';
+
+        newsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                currentNews = Object.keys(data).map(key => ({ ...data[key], id: key })); // Map key to id
+                // Sort by date desc (newest first)
+                currentNews.sort((a, b) => new Date(b.date) - new Date(a.date));
+            } else {
+                currentNews = [];
+                // Check if we should initialize data (optional)
+                // If this is the *very first* run, maybe we want to push INITIAL_NEWS
+                // But let's avoid auto-writing without explicit intent to avoid dupes on every empty load
+            }
+            newsLoaded = true;
+
+            // Notify listeners
+            newsListeners.forEach(cb => cb(currentNews));
+
+            // Page specific logic for recent news (Home page)
+            if (document.getElementById('recent-news-grid')) {
+                const news = currentNews.slice(0, 3);
+                const grid = document.getElementById('recent-news-grid');
+                if (grid) {
+                    if (news.length > 0) {
+                        grid.innerHTML = news.map(createNewsCard).join('');
+                    } else {
+                        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Aucune actualité pour le moment.</p>';
+                    }
+                }
+            }
+        });
+    } else {
+        console.error("Firebase JS SDK not loaded or config missing");
+    }
+
     // Login Form Handler
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -338,32 +404,34 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use provided URL or fallback to random/placeholder
             const image = imageUrl ? imageUrl : 'https://picsum.photos/seed/' + Date.now() + '/400/250';
 
+            const newsItem = {
+                title: title,
+                content: content,
+                regionId: region,
+                image: image,
+                // If editing, keep original date, else new date
+                date: (id && getNews().find(n => n.id == id)?.date) || new Date().toISOString()
+            };
+
+            // If IFL user provided a date, use it/override it
+            const dateInput = document.getElementById('post-date');
+            if (dateInput && dateInput.value) {
+                newsItem.date = dateInput.value;
+            }
+
             if (id) {
                 // Edit existing
-                let news = getNews();
-                const index = news.findIndex(item => item.id == id);
-                if (index !== -1) {
-                    news[index].title = title;
-                    news[index].content = content;
-                    news[index].regionId = region;
-                    news[index].image = image;
-                    // Keep original date or update? Usually keep original or add updated_at. Keeping original for now.
-                    localStorage.setItem('ifl_news', JSON.stringify(news));
+                if (typeof firebase !== 'undefined') {
+                    firebase.database().ref('news/' + id).update(newsItem).then(() => {
+                        closeModal('post-modal');
+                    });
                 }
             } else {
                 // Create new
-                const newItem = {
-                    id: Date.now(),
-                    regionId: region,
-                    title: title,
-                    content: content,
-                    date: new Date().toISOString(),
-                    image: image
-                };
-                saveNews(newItem);
+                saveNews(newsItem); // Uses firebase push
             }
 
-            window.location.reload();
+            // No reload needed if listeners work, but close modal is essential
         });
     }
 
@@ -372,12 +440,5 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = 'none';
         }
-    }
-
-    // Page specific logic
-    if (document.getElementById('recent-news-grid')) {
-        const news = getNews().slice(0, 3); // Get 3 most recent
-        const grid = document.getElementById('recent-news-grid');
-        grid.innerHTML = news.map(createNewsCard).join('');
     }
 });

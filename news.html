@@ -39,12 +39,19 @@
 
     <footer></footer>
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script src="firebase-config.js"></script>
     <script src="data.js"></script>
     <script src="script.js"></script>
     <script>
         const newsGrid = document.getElementById('news-grid');
         const filter = document.getElementById('region-filter');
-        const allNews = getNews();
+        // Initialize with empty or cached
+        let allNews = getNews();
 
         // Populate Filter
         REGIONS.forEach(r => {
@@ -71,7 +78,14 @@
             });
         }
 
+        // Initial render (might be empty)
         renderNews();
+
+        // Listen for updates from Firebase
+        onNewsUpdate((news) => {
+            allNews = news;
+            renderNews(filter.value);
+        });
 
         filter.addEventListener('change', (e) => {
             renderNews(e.target.value);
