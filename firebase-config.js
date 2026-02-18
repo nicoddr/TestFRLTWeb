@@ -2,11 +2,11 @@
 // IMPORTANT: Replace the following values with your own Firebase project configuration
 // You can find these values in your Firebase Console > Project Settings > General > Your Apps
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.europe-west1.firebasedatabase.app", // Or .firebaseio.com
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    apiKey: "AIzaSyAIPJdYfUvL5U2GOtwEPPZQiIs4hCtIzPc", // Still required for full functionality, check console if errors persist
+    authDomain: "ifli-f7f9f.firebaseapp.com",
+    databaseURL: "https://ifli-f7f9f-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ifli-f7f9f",
+    storageBucket: "ifli-f7f9f.appspot.com",
     messagingSenderId: "YOUR_SENDER_ID",
     appId: "YOUR_APP_ID"
 };
