@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - Plateforme France-Lituanie</title>
+    <link rel="icon" type="image/x-icon" href="Logo.ico">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Fonts placeholder -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <header></header> <!-- Injected via JS -->
+
+    <section class="hero">
+        <div class="container">
+            <h1>Échanges Scolaires France-Lituanie</h1>
+            <p>Une plateforme collaborative pour partager les projets, les voyages et renforcer les liens entre nos deux
+                pays.</p>
+            <div style="margin-top: 2rem;">
+                <a href="regions.html" class="btn btn-primary"
+                    style="margin-right: 1rem; background-color: var(--secondary); color: var(--primary);">Découvrir les
+                    Régions</a>
+                <a href="guide.html" class="btn btn-outline">Guide Professeurs</a>
+            </div>
+        </div>
+    </section>
+
+    <main class="container">
+
+        <section style="margin: 4rem 0;">
+            <div class="flex justify-between items-center" style="margin-bottom: 2rem;">
+                <h2>Dernières Actualités</h2>
+                <a href="news.html" class="btn btn-primary" style="font-size: 0.9rem;">Toutes les actualités</a>
+            </div>
+
+            <div id="recent-news-grid" class="grid grid-cols-3 gap-4">
+                <!-- News loaded via JS -->
+            </div>
+        </section>
+
+        <section
+            style="margin: 4rem 0; background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-sm);">
+            <div class="flex items-center gap-4">
+                <div style="flex: 1;">
+                    <h2>Explorez les Régions</h2>
+                    <p style="margin-bottom: 1.5rem;">Découvrez les établissements partenaires dans chaque région de
+                        France. Cliquez sur la carte pour accéder aux détails des projets et des échanges.</p>
+                    <a href="regions.html" class="btn btn-primary">Voir la Carte Interactive</a>
+                </div>
+                <div style="flex: 1; display: flex; justify-content: center; position: relative;">
+                    <!-- Interactive Map Container -->
+                    <div id="homepage-map" style="width: 100%; max-width: 300px;"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer></footer> <!-- Injected via JS -->
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script src="regions-geo.js"></script>
+    <script src="map-renderer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize homepage map
+            MapRenderer.init('homepage-map');
+        });
+    </script>
+</body>
+
+</html>

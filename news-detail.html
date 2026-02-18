@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détail Actualité - Plateforme France-Lituanie</title>
+    <link rel="icon" type="image/x-icon" href="Logo.ico">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header></header> <!-- Injected via JS -->
+
+    <main class="container" style="margin: 4rem auto; max-width: 800px;">
+
+        <a href="news.html" class="btn btn-outline"
+            style="color: var(--primary); border-color: var(--primary); margin-bottom: 2rem;">&larr; Retour aux
+            actualités</a>
+
+        <article id="news-article"
+            style="background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-md);">
+            <!-- Content Injected via JS -->
+            <div id="loading" style="text-align: center; padding: 2rem;">Chargement de l'actualité...</div>
+        </article>
+
+    </main>
+
+    <footer></footer> <!-- Injected via JS -->
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Get News ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const newsId = params.get('id');
+        const container = document.getElementById('news-article');
+
+        if (!newsId) {
+            container.innerHTML = '<div class="alert alert-warning">Aucune actualité spécifiée. <a href="news.html">Retour</a></div>';
+        } else {
+            const allNews = getNews();
+            // Loose comparison because ID from URL is string, ID in data might be number
+            const item = allNews.find(n => n.id == newsId);
+
+            if (!item) {
+                container.innerHTML = '<div class="alert alert-warning">Actualité introuvable. Elle a peut-être été supprimée. <a href="news.html">Retour</a></div>';
+            } else {
+                const region = getRegion(item.regionId);
+                const regionName = region ? region.name : 'France';
+
+                // Format Date
+                const dateObj = new Date(item.date);
+                const dateStr = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                container.innerHTML = `
+                    <div style="margin-bottom: 1.5rem;">
+                        <span class="region-tag" style="position: static; display: inline-block; margin-bottom: 1rem;">${regionName}</span>
+                        <h1 style="font-size: 2.5rem; line-height: 1.2; margin-bottom: 0.5rem; color: var(--primary);">${item.title}</h1>
+                        <div style="color: #64748b; font-size: 0.9rem;">Publié le ${dateStr}</div>
+                    </div>
+
+                    <img src="${item.image}" alt="${item.title}" style="width: 100%; height: auto; border-radius: var(--radius); margin-bottom: 2rem; object-fit: cover; max-height: 500px;">
+
+                    <div class="news-content" style="line-height: 1.8; font-size: 1.1rem; color: #334155;">
+                        ${item.content.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>

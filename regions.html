@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Régions - Plateforme France-Lituanie</title>
+    <link rel="icon" type="image/x-icon" href="Logo.ico">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* New Map Styles */
+        #map-wrapper {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .france-map-svg {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .map-region {
+            fill: #3558a2;
+            stroke: #fff;
+            stroke-width: 1;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .map-region:hover {
+            fill: #e1251b;
+            transform: translateY(-2px);
+        }
+
+        /* Tooltip */
+        #map-tooltip {
+            position: absolute;
+            background: #1e293b;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            z-index: 100;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <header></header>
+
+    <section class="hero" style="padding: 3rem 0; min-height: auto;">
+        <div class="container">
+            <h1>Carte des Régions</h1>
+            <p style="margin-bottom: 0;">Sélectionnez une région pour voir les projets</p>
+        </div>
+    </section>
+
+    <main class="container" style="margin: 3rem auto;">
+
+        <h2 style="text-align: center; margin-bottom: 2rem;">Carte Interactive</h2>
+
+        <div id="map-wrapper">
+            <div id="map-container">
+                <!-- SVG injected here -->
+            </div>
+            <div id="map-tooltip"></div>
+        </div>
+
+        <div class="dom-tom-container">
+            <div role="button" class="dom-tom-item" data-id="guadeloupe">Guadeloupe</div>
+            <div role="button" class="dom-tom-item" data-id="martinique">Martinique</div>
+            <div role="button" class="dom-tom-item" data-id="guyane">Guyane</div>
+            <div role="button" class="dom-tom-item" data-id="mayotte">Mayotte</div>
+            <div role="button" class="dom-tom-item" data-id="reunion">La Réunion</div>
+        </div>
+
+        <!-- List View -->
+        <h2 style="margin-top: 4rem; margin-bottom: 2rem;">Liste des Régions</h2>
+        <div class="region-list-grid" id="region-list">
+            <!-- JS will populate -->
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <!-- Load GeoJSON Data -->
+    <script src="regions-geo.js"></script>
+
+    <script>
+        // DOM Elements
+        const mapContainer = document.getElementById('map-container');
+        const tooltip = document.getElementById('map-tooltip');
+        const wrapper = document.getElementById('map-wrapper');
+
+        // ID Mapping to match data.js
+        const idMap = {
+            'Auvergne-Rhône-Alpes': 'auvergne-rhone-alpes',
+            'Bourgogne-Franche-Comté': 'bourgogne-franche-comte',
+            'Bretagne': 'bretagne',
+            'Centre-Val de Loire': 'centre-val-de-loire',
+            'Corse': 'corse',
+            'Grand Est': 'grand-est',
+            'Guadeloupe': 'guadeloupe',
+            'Guyane': 'guyane',
+            'Hauts-de-France': 'hauts-de-france',
+            'Île-de-France': 'ile-de-france',
+            'Martinique': 'martinique',
+            'Mayotte': 'mayotte',
+            'Normandie': 'normandie',
+            'Nouvelle-Aquitaine': 'nouvelle-aquitaine',
+            'Occitanie': 'occitanie',
+            'Pays de la Loire': 'pays-de-la-loire',
+            "Provence-Alpes-Côte d'Azur": 'paca',
+            'La Réunion': 'reunion'
+        };
+
+        // Projection Function (Simple Conic-like for France)
+        function project(lon, lat) {
+            // Approx center of Metropolitan France
+            const center_lon = 2.5;
+            const center_lat_rad = 46.5 * Math.PI / 180;
+
+            // Simple projection math
+            const x = (lon - center_lon) * Math.cos(center_lat_rad);
+            const y = -(lat - 46.5);
+            return [x, y];
+        }
+
+        // Render Map
+        function renderMap() {
+            if (!typeof GEO_DATA === 'undefined') {
+                mapContainer.innerHTML = '<p class="text-center">Erreur de chargement de la carte.</p>';
+                return;
+            }
+
+            let min_x = Infinity, max_x = -Infinity;
+            let min_y = Infinity, max_y = -Infinity;
+
+            const features = [];
+            const domTomIds = ['guadeloupe', 'guyane', 'martinique', 'mayotte', 'reunion'];
+
+            // Process Features
+            GEO_DATA.features.forEach(feature => {
+                const name = feature.properties.nom;
+                const id = idMap[name];
+
+                // Skip if no ID or is DOM-TOM (handled separately)
+                if (!id || domTomIds.includes(id)) return;
+
+                const geo_type = feature.geometry.type;
+                let coords = feature.geometry.coordinates;
+                let polygons = [];
+
+                if (geo_type === 'Polygon') polygons = [coords];
+                else if (geo_type === 'MultiPolygon') polygons = coords;
+
+                const svg_poly_paths = [];
+
+                polygons.forEach(poly => {
+                    const ring = poly[0];
+                    const pts = [];
+                    ring.forEach(pt => {
+                        const [x, y] = project(pt[0], pt[1]);
+                        pts.push([x, y]);
+                        min_x = Math.min(min_x, x);
+                        max_x = Math.max(max_x, x);
+                        min_y = Math.min(min_y, y);
+                        max_y = Math.max(max_y, y);
+                    });
+                    svg_poly_paths.push(pts);
+                });
+
+                features.push({ name, id, paths: svg_poly_paths });
+            });
+
+            // Calculate ViewBox
+            const width = 600;
+            const height = 600;
+            const data_w = max_x - min_x;
+            const data_h = max_y - min_y;
+            const scale = Math.min(width / data_w, height / data_h) * 0.95;
+
+            const dx = (width - data_w * scale) / 2 - min_x * scale;
+            const dy = (height - data_h * scale) / 2 - min_y * scale;
+
+            // Build SVG
+            let svgHTML = `<svg viewBox="0 0 ${width} ${height}" class="france-map-svg">`;
+
+            features.forEach(feat => {
+                let d = "";
+                feat.paths.forEach(pts => {
+                    pts.forEach((pt, i) => {
+                        const sx = pt[0] * scale + dx;
+                        const sy = pt[1] * scale + dy;
+                        d += (i === 0 ? "M" : "L") + sx.toFixed(1) + "," + sy.toFixed(1);
+                    });
+                    d += "Z ";
+                });
+                svgHTML += `<path d="${d.trim()}" class="map-region" data-id="${feat.id}" data-name="${feat.name}"></path>`;
+            });
+
+            svgHTML += '</svg>';
+            mapContainer.innerHTML = svgHTML;
+
+            // Re-attach handlers
+            attachMapHandlers();
+        }
+
+        function attachMapHandlers() {
+            document.querySelectorAll('.map-region').forEach(el => {
+                // Click
+                el.addEventListener('click', () => {
+                    const id = el.dataset.id;
+                    window.location.href = `region-detail.html?id=${id}`;
+                });
+
+                // Hover Tooltip
+                el.addEventListener('mousemove', (e) => {
+                    const rect = wrapper.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    tooltip.style.left = x + 'px';
+                    tooltip.style.top = y + 'px';
+                    tooltip.textContent = el.dataset.name;
+                    tooltip.style.opacity = '1';
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+            });
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMap();
+
+            // DOM-TOM Handlers (keep existing)
+            document.querySelectorAll('.dom-tom-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    window.location.href = `region-detail.html?id=${el.dataset.id}`;
+                });
+            });
+
+            // List Population (keep existing)
+            const list = document.getElementById('region-list');
+            if (list && typeof REGIONS !== 'undefined') {
+                REGIONS.forEach(region => {
+                    const div = document.createElement('div');
+                    div.className = 'region-item';
+                    div.innerHTML = `
+                        <div class="region-circle">${region.name.substring(0, 2).toUpperCase()}</div>
+                        <div>
+                            <strong>${region.name}</strong>
+                            <div style="font-size: 0.8rem; color: #64748b;">${region.cities.join(', ')}</div>
+                        </div>
+                    `;
+                    div.onclick = () => window.location.href = `region-detail.html?id=${region.id}`;
+                    list.appendChild(div);
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

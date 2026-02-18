@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualités - Plateforme France-Lituanie</title>
+    <link rel="icon" type="image/x-icon" href="Logo.ico">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header></header>
+
+    <section class="hero" style="padding: 3rem 0; min-height: auto;">
+        <div class="container">
+            <h1>Actualités</h1>
+            <p style="margin-bottom: 0;">Retrouvez toutes les actualités des échanges scolaires</p>
+        </div>
+    </section>
+
+    <main class="container" style="margin: 3rem auto;">
+
+        <div class="filter-bar">
+            <label for="region-filter" style="font-weight: 600;">Filtrer par région :</label>
+            <select id="region-filter" class="form-control" style="width: auto; min-width: 250px;">
+                <option value="">Toutes les régions</option>
+                <!-- JS will populate -->
+            </select>
+        </div>
+
+        <div id="news-grid" class="grid grid-cols-3 gap-4">
+            <!-- JS will populate -->
+        </div>
+
+    </main>
+
+
+
+    <footer></footer>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script>
+        const newsGrid = document.getElementById('news-grid');
+        const filter = document.getElementById('region-filter');
+        const allNews = getNews();
+
+        // Populate Filter
+        REGIONS.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name;
+            filter.appendChild(opt);
+        });
+
+        // Render News
+        function renderNews(regionId = '') {
+            newsGrid.innerHTML = '';
+            const filtered = regionId
+                ? allNews.filter(n => n.regionId === regionId)
+                : allNews;
+
+            if (filtered.length === 0) {
+                newsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #64748b;">Aucune actualité pour le moment.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                newsGrid.innerHTML += createNewsCard(item);
+            });
+        }
+
+        renderNews();
+
+        filter.addEventListener('change', (e) => {
+            renderNews(e.target.value);
+        });
+    </script>
+</body>
+
+</html>

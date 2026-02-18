@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détail Région - Plateforme France-Lituanie</title>
+    <link rel="icon" type="image/x-icon" href="Logo.ico">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header></header>
+
+    <section class="hero" id="region-hero" style="padding: 3rem 0; min-height: auto;">
+        <div class="container">
+            <h1 id="region-title">Région</h1>
+            <p id="region-cities" style="margin-bottom: 0; opacity: 0.8;"></p>
+        </div>
+    </section>
+
+    <main class="container" style="margin: 3rem auto;">
+
+        <div class="flex justify-between items-center" style="margin-bottom: 2rem;">
+            <h2>Actualités de la région</h2>
+            <!-- Protected Post Button -->
+            <button id="region-post-btn"
+                onclick="document.getElementById('post-form-section').scrollIntoView({behavior: 'smooth'})"
+                class="btn btn-primary" style="display: none;">Publier une actualité</button>
+        </div>
+
+        <div id="region-news-grid" class="grid grid-cols-3 gap-4" style="margin-bottom: 4rem;">
+            <!-- JS will populate -->
+        </div>
+
+        <!-- Protected Posting Form Section -->
+        <div id="post-form-section"
+            style="background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-md); max-width: 800px; margin: 0 auto; border-top: 4px solid var(--accent); display: none;">
+            <h2 style="margin-bottom: 1.5rem;">Publier une nouvelle actualité</h2>
+            <form id="add-news-form">
+                <div class="form-group">
+                    <label>Titre de l'actualité</label>
+                    <input type="text" name="title" required class="form-control"
+                        placeholder="Ex: Arrivée des correspondants à...">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="date" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Image (URL)</label>
+                        <input type="url" name="image" class="form-control" placeholder="https://..."
+                            value="https://placehold.co/600x400">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Contenu</label>
+                    <textarea name="content" required class="form-control" rows="5"
+                        placeholder="Racontez votre expérience..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Publier</button>
+            </form>
+        </div>
+
+    </main>
+
+    <footer></footer>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Get Region ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const regionId = params.get('id');
+        const region = getRegion(regionId);
+
+        if (!region) {
+            document.querySelector('main').innerHTML = '<div class="container alert alert-warning">Région introuvable. <a href="regions.html">Retour aux régions</a></div>';
+        } else {
+            // Render Info
+            document.getElementById('region-title').textContent = region.name;
+            document.getElementById('region-cities').textContent = `Villes principales : ${region.cities.join(', ')}`;
+
+            // Render News
+            function renderRegionNews() {
+                const allNews = getNews();
+                const regionNews = allNews.filter(n => n.regionId === regionId);
+                const grid = document.getElementById('region-news-grid');
+
+                grid.innerHTML = '';
+                if (regionNews.length === 0) {
+                    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.6;">Aucune actualité pour cette région. Soyez le premier à poster !</p>';
+                } else {
+                    regionNews.forEach(item => {
+                        grid.innerHTML += createNewsCard(item);
+                    });
+                }
+            }
+            renderRegionNews();
+
+            // Check Auth for Form Visibility
+            if (isLoggedIn()) {
+                document.getElementById('region-post-btn').style.display = 'block';
+                document.getElementById('post-form-section').style.display = 'block';
+            }
+
+            // Handle Form Submit
+            document.getElementById('add-news-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                const newPost = {
+                    id: Date.now(),
+                    title: formData.get('title'),
+                    date: formData.get('date'),
+                    content: formData.get('content'),
+                    image: formData.get('image') || 'https://placehold.co/600x400',
+                    regionId: regionId
+                };
+
+                saveNews(newPost);
+                renderRegionNews();
+                e.target.reset();
+                alert('Votre actualité a été publiée avec succès !');
+            });
+        }
+    </script>
+</body>
+
+</html>
