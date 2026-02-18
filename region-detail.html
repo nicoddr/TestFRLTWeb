@@ -70,6 +70,10 @@
 
     <footer></footer>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="data.js"></script>
     <script src="script.js"></script>
     <script>
@@ -87,7 +91,7 @@
 
             // Render News
             function renderRegionNews() {
-                const allNews = getNews();
+                const allNews = getNews(); // Uses the currentNews from script.js which is updated by listener
                 const regionNews = allNews.filter(n => n.regionId === regionId);
                 const grid = document.getElementById('region-news-grid');
 
@@ -100,33 +104,60 @@
                     });
                 }
             }
+
+            // Initial render try
             renderRegionNews();
 
-            // Check Auth for Form Visibility
-            if (isLoggedIn()) {
-                document.getElementById('region-post-btn').style.display = 'block';
-                document.getElementById('post-form-section').style.display = 'block';
-            }
+            // Listen for updates (important for async load)
+            onNewsUpdate(() => {
+                renderRegionNews();
+            });
+
+            // Auth State Listener for this specific page
+            firebase.auth().onAuthStateChanged((user) => {
+                const postBtn = document.getElementById('region-post-btn');
+                const formSection = document.getElementById('post-form-section');
+
+                if (user) {
+                    if (postBtn) postBtn.style.display = 'block';
+                    if (formSection) formSection.style.display = 'block';
+                } else {
+                    if (postBtn) postBtn.style.display = 'none';
+                    if (formSection) formSection.style.display = 'none';
+                }
+            });
 
             // Handle Form Submit
-            document.getElementById('add-news-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
+            const form = document.getElementById('add-news-form');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
 
-                const newPost = {
-                    id: Date.now(),
-                    title: formData.get('title'),
-                    date: formData.get('date'),
-                    content: formData.get('content'),
-                    image: formData.get('image') || 'https://placehold.co/600x400',
-                    regionId: regionId
-                };
+                    if (typeof firebase === 'undefined' || !firebase.apps.length) {
+                        alert("Erreur: Firebase non chargé. Rechargez la page.");
+                        return;
+                    }
 
-                saveNews(newPost);
-                renderRegionNews();
-                e.target.reset();
-                alert('Votre actualité a été publiée avec succès !');
-            });
+                    const title = form.querySelector('input[name="title"]').value;
+                    const date = form.querySelector('input[name="date"]').value;
+                    const content = form.querySelector('textarea[name="content"]').value;
+                    const imageInput = form.querySelector('input[name="image"]').value;
+
+                    const newPost = {
+                        title: title,
+                        date: date,
+                        content: content,
+                        image: imageInput || 'https://placehold.co/600x400',
+                        regionId: regionId
+                    };
+
+                    // Uses the global saveNews from script.js which pushes to Firebase
+                    saveNews(newPost);
+
+                    form.reset();
+                    alert('Votre actualité a été publiée avec succès !');
+                });
+            }
         }
     </script>
 </body>

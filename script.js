@@ -39,31 +39,47 @@ function getRegion(id) {
 }
 
 // Auth State
-const AUTH_KEY = 'ifl_auth_user'; // Changed key to store username
-const USERS = {
-    'Professeur': 'ProfFRLIT2026',
-    'IFL': 'InstitutFR2026'
-};
+// Removed AUTH_KEY and USERS object
+let currentUserInfo = null;
 
 function isLoggedIn() {
-    return localStorage.getItem(AUTH_KEY) !== null;
+    return firebase.auth().currentUser !== null;
 }
 
 function getCurrentUser() {
-    return localStorage.getItem(AUTH_KEY);
+    // Return 'IFL' or 'Professeur' based on email
+    if (!currentUserInfo) return null;
+    return currentUserInfo.email.startsWith('ifl') ? 'IFL' : 'Professeur';
 }
 
 function login(user, pass) {
-    if (USERS[user] && USERS[user] === pass) {
-        localStorage.setItem(AUTH_KEY, user);
-        return true;
-    }
-    return false;
+    // Convert username to pseudo-email
+    const email = user.toLowerCase().replace(/\s+/g, '') + '@ifl-app.com';
+
+    firebase.auth().signInWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+            // Signed in
+            // onAuthStateChanged in DOMContentLoaded will handle UI
+            // We can close modal here
+            closeModal('login-modal');
+        })
+        .catch((error) => {
+            console.error(error);
+            alert("Erreur de connexion : " + error.message);
+        });
+
+    return true; // Asynchronous, so true just means "attempted"
 }
 
 function logout() {
-    localStorage.removeItem(AUTH_KEY);
-    window.location.reload();
+    firebase.auth().signOut().then(() => {
+        // Sign-out successful.
+        // UI updates via listener
+        // Reload to be clean?
+        window.location.reload();
+    }).catch((error) => {
+        console.error(error);
+    });
 }
 
 // UI Components
@@ -323,70 +339,22 @@ function renderModals() {
         </div>
     </div>`;
 
+    // Clear existing modals if any
+    const existingLogin = document.getElementById('login-modal');
+    const existingPost = document.getElementById('post-modal');
+    if (existingLogin) existingLogin.remove();
+    if (existingPost) existingPost.remove();
+
     document.body.insertAdjacentHTML('beforeend', modalsHTML);
-}
 
-// Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    renderModals(); // Inject modals first
-    renderHeader();
-    renderFooter();
-
-    // Firebase Initialization and Listener
-    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-        const database = firebase.database();
-        const newsRef = database.ref('news');
-
-        // Show loading state if grid exists
-        const grid = document.getElementById('recent-news-grid');
-        if (grid) grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Chargement des actualités...</p>';
-
-        newsRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                currentNews = Object.keys(data).map(key => ({ ...data[key], id: key })); // Map key to id
-                // Sort by date desc (newest first)
-                currentNews.sort((a, b) => new Date(b.date) - new Date(a.date));
-            } else {
-                currentNews = [];
-                // Check if we should initialize data (optional)
-                // If this is the *very first* run, maybe we want to push INITIAL_NEWS
-                // But let's avoid auto-writing without explicit intent to avoid dupes on every empty load
-            }
-            newsLoaded = true;
-
-            // Notify listeners
-            newsListeners.forEach(cb => cb(currentNews));
-
-            // Page specific logic for recent news (Home page)
-            if (document.getElementById('recent-news-grid')) {
-                const news = currentNews.slice(0, 3);
-                const grid = document.getElementById('recent-news-grid');
-                if (grid) {
-                    if (news.length > 0) {
-                        grid.innerHTML = news.map(createNewsCard).join('');
-                    } else {
-                        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Aucune actualité pour le moment.</p>';
-                    }
-                }
-            }
-        });
-    } else {
-        console.error("Firebase JS SDK not loaded or config missing");
-    }
-
-    // Login Form Handler
+    // Re-attach listeners for new elements
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
-            if (login(user, pass)) {
-                window.location.reload();
-            } else {
-                alert('Identifiants incorrects');
-            }
+            login(user, pass); // Async
         });
     }
 
@@ -430,10 +398,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Create new
                 saveNews(newsItem); // Uses firebase push
             }
-
-            // No reload needed if listeners work, but close modal is essential
         });
     }
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    // renderModals(); -> Moved to Auth Listener to re-render with correct options
+    renderHeader();
+    renderFooter();
+
+    // Firebase Initialization and Listener
+    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+        const database = firebase.database();
+        const newsRef = database.ref('news');
+
+        // Auth State Listener
+        firebase.auth().onAuthStateChanged((user) => {
+            currentUserInfo = user;
+            renderHeader(); // Re-render header to update Login/Logout button
+            renderModals(); // Re-render modals (options might change based on role)
+
+            // If on a specific page that needs re-render based on auth?
+            // e.g., news list with edit buttons
+            newsListeners.forEach(cb => cb(currentNews));
+
+            // Also need to re-render region details if on that page?
+            // Simple way: just reload page on logout, but on login we want smooth update
+        });
+
+        // Show loading state if grid exists
+        const grid = document.getElementById('recent-news-grid');
+        if (grid) grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Chargement des actualités...</p>';
+
+        newsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                currentNews = Object.keys(data).map(key => ({ ...data[key], id: key })); // Map key to id
+                // Sort by date desc (newest first)
+                currentNews.sort((a, b) => new Date(b.date) - new Date(a.date));
+            } else {
+                currentNews = [];
+            }
+            newsLoaded = true;
+
+            // Notify listeners
+            newsListeners.forEach(cb => cb(currentNews));
+
+            // Page specific logic for recent news (Home page)
+            if (document.getElementById('recent-news-grid')) {
+                const news = currentNews.slice(0, 3);
+                const grid = document.getElementById('recent-news-grid');
+                if (grid) {
+                    if (news.length > 0) {
+                        grid.innerHTML = news.map(createNewsCard).join('');
+                    } else {
+                        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Aucune actualité pour le moment.</p>';
+                    }
+                }
+            }
+        });
+    } else {
+        console.error("Firebase JS SDK not loaded or config missing");
+    }
+
+    // Login Form Handler and Post Form Handler moved to renderModals to handle re-injection
 
     // Close modals on outside click
     window.onclick = function (event) {
