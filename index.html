@@ -20,7 +20,7 @@
             <h1>Échanges Scolaires France-Lituanie</h1>
             <p>Une plateforme collaborative pour partager les projets, les voyages et renforcer les liens entre nos deux
                 pays.</p>
-            <div style="margin-top: 2rem;">
+            <div class="flex-wrap" style="margin-top: 2rem; display: flex; justify-content: center;">
                 <a href="regions.html" class="btn btn-primary"
                     style="margin-right: 1rem; background-color: var(--secondary); color: var(--primary);">Découvrir les
                     Régions</a>
@@ -44,14 +44,15 @@
 
         <section
             style="margin: 4rem 0; background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-sm);">
-            <div class="flex items-center gap-4">
+            <div class="responsive-flex flex items-center gap-4">
                 <div style="flex: 1;">
                     <h2>Explorez les Régions</h2>
                     <p style="margin-bottom: 1.5rem;">Découvrez les établissements partenaires dans chaque région de
                         France. Cliquez sur la carte pour accéder aux détails des projets et des échanges.</p>
-                    <a href="regions.html" class="btn btn-primary">Voir la Carte Interactive</a>
+                    <a href="regions.html" class="btn btn-primary" style="display: inline-block;">Voir la Carte
+                        Interactive</a>
                 </div>
-                <div style="flex: 1; display: flex; justify-content: center; position: relative;">
+                <div style="flex: 1; display: flex; justify-content: center; position: relative; margin-top: 2rem;">
                     <!-- Interactive Map Container -->
                     <div id="homepage-map" style="width: 100%; max-width: 300px;"></div>
                 </div>
