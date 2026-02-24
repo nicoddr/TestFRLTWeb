@@ -408,6 +408,31 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHeader();
     renderFooter();
 
+    // Mobile header fade on scroll
+    function handleHeaderScroll() {
+        const header = document.querySelector('header');
+        if (!header) return;
+
+        if (window.innerWidth <= 768) {
+            const scrollY = window.scrollY;
+            const maxScroll = 150; // pixels over which the header fades out
+            let opacity = 1 - (scrollY / maxScroll);
+            opacity = Math.max(0, Math.min(1, opacity));
+
+            header.style.opacity = opacity;
+            header.style.pointerEvents = opacity <= 0 ? 'none' : 'auto';
+        } else {
+            header.style.opacity = 1;
+            header.style.pointerEvents = 'auto';
+        }
+    }
+
+    window.addEventListener('scroll', handleHeaderScroll);
+    window.addEventListener('resize', handleHeaderScroll);
+
+    // Initial call
+    handleHeaderScroll();
+
     // Firebase Initialization and Listener
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
         const database = firebase.database();
